@@ -1,0 +1,37 @@
+rules_version = '2';
+
+// Perfume journal security rules.
+// - Anyone can read (the journal is public).
+// - Only the owner can add, edit or delete.
+//
+// Replace YOUR_OWNER_UID below with your Firebase user ID (SETUP.md, step 7).
+// It must match OWNER_UID in firebase-config.js.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner() {
+      return request.auth != null && request.auth.uid == 'YOUR_OWNER_UID';
+    }
+
+    function validPerfume() {
+      let d = request.resource.data;
+      return d.brand is string && d.brand.size() > 0 && d.brand.size() <= 200
+        && d.name is string && d.name.size() > 0 && d.name.size() <= 300
+        && d.status in ['have', 'had', 'want', 'testing']
+        && (!('rating' in d) || (d.rating is number && d.rating >= 0 && d.rating <= 5))
+        && (!('photo' in d) || d.photo == null || (d.photo is string && d.photo.size() < 900000));
+    }
+
+    match /perfumes/{perfumeId} {
+      allow read: if true;
+      allow create, update: if isOwner() && validPerfume();
+      allow delete: if isOwner();
+    }
+
+    // Everything else is closed.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

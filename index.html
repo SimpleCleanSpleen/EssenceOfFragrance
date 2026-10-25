@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Essence of Fragrance</title>
+  <meta name="description" content="A personal perfume journal: my collection, wishlist, memories and notes.">
+  <meta name="theme-color" content="#FFE3EF">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://fimgs.net">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Pacifico&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="modulepreload" href="js/app.js">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <a class="logo" href="#/" aria-label="Essence of Fragrance, home">
+      <span class="logo-mark" aria-hidden="true">✿</span>
+      <span class="logo-text">
+        <span class="logo-title">Essence of Fragrance</span>
+        <span class="logo-tag">a personal perfume journal ♡</span>
+      </span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="#/" data-route="gallery">Journal</a>
+      <a href="#/stats" data-route="stats">Stats</a>
+    </nav>
+    <div id="auth-area" class="auth-area"></div>
+  </header>
+
+  <div id="banners" class="banners"></div>
+
+  <main id="main" tabindex="-1">
+    <section id="view-gallery" aria-label="Perfume gallery">
+      <div id="potd"></div>
+
+      <div class="tabs" id="tabs" role="tablist" aria-label="Lists"></div>
+
+      <div class="toolbar">
+        <label class="search">
+          <span class="sr-only">Search perfumes</span>
+          <span class="search-icon" aria-hidden="true">🔍</span>
+          <input id="search" type="search" placeholder="Search name, brand or note…" autocomplete="off" enterkeyhint="search">
+        </label>
+        <label class="select">
+          <span class="sr-only">Filter by brand</span>
+          <select id="brand"></select>
+        </label>
+        <label class="select">
+          <span class="sr-only">Sort by</span>
+          <select id="sort"></select>
+        </label>
+      </div>
+      <p id="result-count" class="result-count" aria-live="polite"></p>
+
+      <div id="grid" class="grid" aria-busy="true"></div>
+      <div id="sentinel" class="sentinel" hidden>
+        <button id="load-more" class="btn btn-ghost">Show more ♡</button>
+      </div>
+    </section>
+
+    <section id="view-detail" hidden></section>
+    <section id="view-stats" hidden></section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Made with <span aria-label="love">♥</span> and too many perfume samples.</p>
+    <p class="footer-small">Bottle images courtesy of Fragrantica. <span id="footer-auth"></span></p>
+  </footer>
+
+  <button id="fab" class="fab" data-action="add" hidden><span aria-hidden="true">+</span> Add perfume</button>
+
+  <dialog id="editor" class="dialog dialog-editor" aria-label="Perfume editor"></dialog>
+  <dialog id="confirm" class="dialog dialog-small" aria-label="Confirm"></dialog>
+  <dialog id="progress" class="dialog dialog-small" aria-label="Import progress"></dialog>
+  <datalist id="brand-list"></datalist>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <noscript><p class="noscript">This journal needs JavaScript to show its perfumes.</p></noscript>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
