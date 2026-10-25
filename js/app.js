@@ -9,6 +9,8 @@ import { confetti } from './confetti.js';
 import { openEditor, confirmDialog, friendlyError } from './form.js';
 import * as V from './views.js';
 import { noteKey } from './notes.js';
+import * as C from './combos.js';
+import { openShare, renderPerfume, renderCombo, localPalettes, saveLocalPalettes } from './share.js';
 
 const SITE_TITLE = document.title;
 const PREFS_KEY = 'perfume-journal-prefs';
@@ -26,7 +28,14 @@ const state = {
   shown: PAGE_SIZE,
   galleryScroll: 0,
   route: { name: 'gallery' },
+  combos: [],
+  combosLoaded: false,
+  palettes: [], // saved by the owner, shared with everyone
 };
+
+let combosCol = null;
+let palettesCol = null;
+let openShareDialog = null;
 
 /* ------------------------------------------------------------ helpers */
 
@@ -35,6 +44,7 @@ const usingSamples = () => state.loaded && state.all.length === 0 && state.backe
 const perfumes = () => (usingSamples() ? SAMPLE_PERFUMES.map((p) => normalize(p, p.id)) : state.all);
 const canEdit = (p) => !(p.sample && state.backend.mode === 'firebase');
 const findPerfume = (id) => perfumes().find((p) => p.id === id);
+const findCombo = (id) => state.combos.find((c) => c.id === id);
 
 function loadPrefs() {
   try {
@@ -163,7 +173,8 @@ function renderDetail(id) {
     if (!state.loaded) return render(el, html`<div class="card skeleton detail-skel" aria-hidden="true"></div>`);
     return render(el, html`<div class="empty"><h3>Perfume not found</h3><p>It may have been deleted.</p><a class="btn" href="#/">Back to journal</a></div>`);
   }
-  render(el, V.detail(p, { isOwner: state.isOwner, canEdit: canEdit(p) }));
+  const inCombos = state.combos.filter((c) => c.perfumeIds.includes(p.id));
+  render(el, V.detail(p, { isOwner: state.isOwner, canEdit: canEdit(p), extra: C.combosPanel(inCombos, findPerfume) }));
   document.title = `${p.name} · ${SITE_TITLE}`;
 }
 
@@ -181,6 +192,23 @@ function renderNote(note) {
   document.title = `${note} · ${SITE_TITLE}`;
 }
 
+function renderCombos() {
+  render($('#view-combos'), C.combosPage(state.combos, findPerfume, { isOwner: state.isOwner, loaded: state.combosLoaded && state.loaded }));
+  document.title = `Combos · ${SITE_TITLE}`;
+}
+
+function renderComboPage(id) {
+  const el = $('#view-combo');
+  const combo = findCombo(id);
+  if (!combo) {
+    if (!state.combosLoaded) return render(el, html`<div class="card skeleton detail-skel" aria-hidden="true"></div>`);
+    return render(el, html`<div class="empty"><h3>Combo not found</h3><p>It may have been deleted.</p><a class="btn" href="#/combos">All combos</a></div>`);
+  }
+  const card = (p) => V.card(p, { isOwner: state.isOwner, canEdit: canEdit(p) });
+  render(el, C.comboDetail(combo, C.membersOf(combo, findPerfume), { isOwner: state.isOwner, card }));
+  document.title = `${combo.name} · ${SITE_TITLE}`;
+}
+
 function renderStats() {
   render($('#view-stats'), V.stats(perfumes()));
   document.title = `Stats · ${SITE_TITLE}`;
@@ -192,6 +220,8 @@ function renderRoute() {
   $('#view-detail').hidden = r.name !== 'detail';
   $('#view-stats').hidden = r.name !== 'stats';
   $('#view-note').hidden = r.name !== 'note';
+  $('#view-combos').hidden = r.name !== 'combos';
+  $('#view-combo').hidden = r.name !== 'combo';
   $$nav();
   if (r.name === 'gallery') {
     document.title = SITE_TITLE;
@@ -199,11 +229,14 @@ function renderRoute() {
   } else if (r.name === 'detail') renderDetail(r.id);
   else if (r.name === 'stats') renderStats();
   else if (r.name === 'note') renderNote(r.note);
+  else if (r.name === 'combos') renderCombos();
+  else if (r.name === 'combo') renderComboPage(r.id);
 }
 
 function $$nav() {
   document.querySelectorAll('.nav a').forEach((a) => {
-    const active = (a.dataset.route || 'gallery') === state.route.name;
+    const current = state.route.name === 'combo' ? 'combos' : state.route.name;
+    const active = (a.dataset.route || 'gallery') === current;
     if (active) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   });
@@ -227,6 +260,8 @@ function onRoute() {
 
   if (name === 'p' && rest.length) state.route = { name: 'detail', id: decodeURIComponent(rest.join('/')) };
   else if (name === 'stats') state.route = { name: 'stats' };
+  else if (name === 'combos') state.route = { name: 'combos' };
+  else if (name === 'combo' && rest.length) state.route = { name: 'combo', id: decodeURIComponent(rest.join('/')) };
   else if (name === 'note' && rest.length) state.route = { name: 'note', note: decodeURIComponent(rest.join('/')) };
   else state.route = { name: 'gallery' };
 
@@ -403,7 +438,8 @@ async function runImport({ auto = false } = {}) {
 }
 
 function exportData() {
-  const data = state.all.map(({ sample, ...p }) => p);
+  const perfumesOut = state.all.map(({ sample, ...p }) => p);
+  const data = { exportedAt: new Date().toISOString(), perfumes: perfumesOut, combos: state.combos, palettes: state.palettes };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -412,7 +448,101 @@ function exportData() {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  toast(`Exported ${data.length} perfumes`);
+  toast(`Exported ${perfumesOut.length} perfumes and ${state.combos.length} combos`);
+}
+
+/* ------------------------------------------------------------ combos */
+
+async function saveCombo(data, id) {
+  if (id) {
+    await combosCol.update(id, data);
+    toast('Combo saved ♡');
+    return id;
+  }
+  const newId = await combosCol.create(data, 'combo');
+  confetti();
+  toast(`${data.name} created 💞`);
+  return newId;
+}
+
+async function deleteCombo(id) {
+  const combo = findCombo(id);
+  if (!combo) return false;
+  const ok = await confirmDialog({
+    title: 'Delete this combo?',
+    text: `“${combo.name}” will be gone for good. The perfumes in it stay in your journal.`,
+    ok: 'Yes, delete',
+    danger: true,
+  });
+  if (!ok) return false;
+  try {
+    await combosCol.remove(id);
+    toast('Combo deleted');
+    if (state.route.name === 'combo' && state.route.id === id) location.hash = '#/combos';
+    return true;
+  } catch (err) {
+    toast(friendlyError(err));
+    return false;
+  }
+}
+
+const comboHandlers = { save: saveCombo, remove: deleteCombo };
+const pickable = () => perfumes().filter((p) => canEdit(p));
+
+async function addCombo(withId) {
+  const id = await C.openComboEditor(withId ? { perfumeIds: [withId] } : null, pickable(), comboHandlers);
+  if (id && id !== 'deleted') location.hash = `#/combo/${encodeURIComponent(id)}`;
+}
+
+async function editCombo(id) {
+  const combo = findCombo(id);
+  if (combo) await C.openComboEditor(combo, pickable(), comboHandlers);
+}
+
+/* ------------------------------------------------------------ sharing */
+
+// Her palettes live in Firestore (synced, visible to all); visitors keep theirs in this browser.
+function savedPalettes() {
+  const shared = state.palettes.map((p) => ({ ...p, canDelete: state.isOwner }));
+  const local = localPalettes().map((p) => ({ ...p, local: true, canDelete: true }));
+  return [...shared, ...local];
+}
+
+async function savePalette(name, colors) {
+  if (state.isOwner) {
+    try {
+      await palettesCol.create({ name, colors }, 'palette');
+    } catch (err) {
+      toast(friendlyError(err));
+    }
+  } else {
+    saveLocalPalettes([...localPalettes(), { id: `local-${Date.now()}`, name, colors }]);
+  }
+}
+
+async function deletePalette(p) {
+  if (p.local) saveLocalPalettes(localPalettes().filter((x) => x.id !== p.id));
+  else if (state.isOwner) {
+    try {
+      await palettesCol.remove(p.id);
+    } catch (err) {
+      toast(friendlyError(err));
+    }
+  }
+}
+
+function share(title, draw) {
+  openShareDialog = openShare({ title, draw, palettes: savedPalettes, savePalette, deletePalette });
+}
+
+function sharePerfume(id) {
+  const p = findPerfume(id);
+  if (p) share(`${p.name} by ${p.brand}`, (colors) => renderPerfume(p, colors));
+}
+
+function shareCombo(id) {
+  const combo = findCombo(id);
+  if (combo) share(combo.name, (colors) => renderCombo(combo, C.membersOf(combo, findPerfume), colors));
 }
 
 async function signIn() {
@@ -433,6 +563,11 @@ const ACTIONS = {
   delete: (el) => deletePerfume(el.dataset.id),
   move: (el) => movePerfume(el.dataset.id, el.dataset.status),
   import: () => runImport(),
+  'add-combo': (el) => addCombo(el.dataset.with),
+  'edit-combo': (el) => editCombo(el.dataset.id),
+  'delete-combo': (el) => deleteCombo(el.dataset.id),
+  share: (el) => sharePerfume(el.dataset.id),
+  'share-combo': (el) => shareCombo(el.dataset.id),
   export: () => exportData(),
   signin: () => signIn(),
   signout: () => state.backend.signOut(),
@@ -535,6 +670,26 @@ async function main() {
     renderAll();
     maybeAutoImport();
     maybeBackfillNotes();
+  });
+
+  combosCol = state.backend.collection('combos');
+  combosCol.subscribe(
+    (list) => {
+      state.combos = list.map(C.normalizeCombo).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      state.combosLoaded = true;
+      renderRoute();
+    },
+    () => {
+      state.combosLoaded = true;
+      renderRoute();
+    },
+  );
+  palettesCol = state.backend.collection('palettes');
+  palettesCol.subscribe((list) => {
+    state.palettes = list
+      .filter((p) => p.name && p.colors)
+      .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    openShareDialog?.refreshPalettes();
   });
 
   state.backend.subscribe(

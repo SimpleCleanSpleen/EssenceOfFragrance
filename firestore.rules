@@ -26,6 +26,25 @@ service cloud.firestore {
         && (!('photo' in d) || d.photo == null || (d.photo is string && d.photo.size() < 900000));
     }
 
+    function validCombo() {
+      let d = request.resource.data;
+      return d.name is string && d.name.size() > 0 && d.name.size() <= 120
+        && d.perfumeIds is list && d.perfumeIds.size() >= 2 && d.perfumeIds.size() <= 10
+        && (!('photo' in d) || d.photo == null || (d.photo is string && d.photo.size() < 900000));
+    }
+
+    match /combos/{comboId} {
+      allow read: if true;
+      allow create, update: if isOwner() && validCombo();
+      allow delete: if isOwner();
+    }
+
+    // Share-image color palettes the owner saved (visitors keep theirs in their browser).
+    match /palettes/{paletteId} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
     match /perfumes/{perfumeId} {
       allow read: if true;
       allow create, update: if isOwner() && validPerfume();

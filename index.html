@@ -27,6 +27,7 @@
     </a>
     <nav class="nav" aria-label="Main">
       <a href="#/" data-route="gallery">Journal</a>
+      <a href="#/combos" data-route="combos">Combos</a>
       <a href="#/stats" data-route="stats">Stats</a>
     </nav>
     <div id="auth-area" class="auth-area"></div>
@@ -66,6 +67,8 @@
     <section id="view-detail" hidden></section>
     <section id="view-stats" hidden></section>
     <section id="view-note" hidden></section>
+    <section id="view-combos" hidden></section>
+    <section id="view-combo" hidden></section>
   </main>
 
   <footer class="site-footer">
@@ -76,6 +79,7 @@
   <button id="fab" class="fab" data-action="add" hidden><span aria-hidden="true">+</span> Add perfume</button>
 
   <dialog id="editor" class="dialog dialog-editor" aria-label="Perfume editor"></dialog>
+  <dialog id="share" class="dialog dialog-editor dialog-share" aria-label="Share image"></dialog>
   <dialog id="confirm" class="dialog dialog-small" aria-label="Confirm"></dialog>
   <dialog id="progress" class="dialog dialog-small" aria-label="Import progress"></dialog>
   <datalist id="brand-list"></datalist>

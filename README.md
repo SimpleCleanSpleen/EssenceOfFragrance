@@ -11,6 +11,8 @@
 - ⚡ **Fast with 700+ perfumes**: cards render in pages of 36 with infinite scroll, images lazy-load, and Firestore caches data on the device
 - 🌸 **Notes with emojis** (🍦 vanilla, 🌹 rose, 🍋 bergamot…): tap any note or accord to see every perfume that has it
 - 📖 **Journal page per perfume**: review, memories, top/heart/base notes, accords, season, occasion, longevity and sillage meters, heart rating, where bought, date added, and a Fragrantica link
+- 💞 **Combos**: name 2–10 perfumes that layer well, add a description and photo (or get an automatic collage)
+- 📤 **Share images**: any perfume or combo becomes a PNG with all its journal info, in preset or custom color palettes (sliders, hex codes, color picker), and palettes can be saved
 - ✏️ **Owner-only editing** (Google sign-in): add brand-new perfumes (even ones that aren't on Fragrantica), edit *every* field of *every* perfume, delete with confirmation, and move between lists in one tap
 - 📷 **Photos from camera or gallery**, resized to 800px and compressed in the browser (WebP, with JPEG fallback), then stored inline; replace or remove any time
 - ☀️ **Perfume of the day**, 📊 **stats page** (counts, top brands, most-loved, favourite notes), cute empty states, and confetti when you add
@@ -33,6 +35,8 @@ js/form.js               Add/edit dialog + confirm dialog
 js/backend.js            Firebase backend and local demo backend (same interface)
 js/images.js             The image layer: display, fallback, compression
 js/notes.js              Note → emoji lookup and note matching
+js/combos.js             Combo pages, collage layout, combo editor
+js/share.js              Share-image renderer (canvas → PNG), palettes and color editor
 js/names.js              Tidies slug-damaged names ("Angel s Bread" → "Angel's Bread")
 js/samples.js            Sample perfumes shown before the import
 data/perfumes.json       734 perfumes converted from the Fragrantica export
@@ -50,6 +54,15 @@ It also keeps `originalName` / `originalBrand` (the untidied imported text) and 
 - Imported perfumes use their **Fragrantica ID as the document ID**. Manually added ones get `custom-<timestamp>`.
 - `status` is one of `have | had | want | testing`.
 - `notes[]` holds notes for perfumes that Fragrantica lists without a top/heart/base pyramid.
+
+### Combos and palettes
+
+- `combos/{combo-<timestamp>}`: `name, description, perfumeIds[] (2–10, in display order), photo (base64 or null), createdAt, updatedAt`
+- `palettes/{palette-<timestamp>}`: `name, colors { bg1, bg2, card, text, accent }`. The owner's saved palettes live in Firestore and sync to all her devices; visitors' palettes are kept in their own browser.
+
+### Share images
+
+Share images are drawn on a canvas in the browser and downloaded (or sent with the phone's share sheet). Fragrantica doesn't allow its images to be used on a canvas, so **only when an image is being made**, bottle pictures are fetched through [wsrv.nl](https://wsrv.nl), a free open-source image proxy. Nothing is stored or re-hosted by the site. The owner's own photos are used directly.
 
 ### The import
 

@@ -148,7 +148,7 @@ function para(text) {
   return text ? html`<p class="prose">${text}</p>` : '';
 }
 
-export function detail(p, { isOwner, canEdit }) {
+export function detail(p, { isOwner, canEdit, extra = '' }) {
   const hasNotes = p.topNotes.length || p.heartNotes.length || p.baseNotes.length || p.notes.length;
   const pyramid = hasNotes
     ? html`<div class="pyramid">
@@ -182,6 +182,10 @@ export function detail(p, { isOwner, canEdit }) {
           <p class="detail-brand">${p.brand}</p>
           ${hearts(p.rating, { size: 'lg' })}
           ${p.sample ? html`<p class="hint">✨ Sample entry, shown until your real journal is imported.</p>` : ''}
+          <div class="owner-row">
+            <button class="btn btn-ghost" data-action="share" data-id="${p.id}">📤 Share</button>
+            ${isOwner && canEdit ? html`<button class="btn btn-ghost" data-action="add-combo" data-with="${p.id}">💞 New combo with this</button>` : ''}
+          </div>
           ${isOwner && canEdit
             ? html`<div class="move-row" role="group" aria-label="Move to another list">
                 ${STATUSES.filter((s) => s.id !== p.status).map(
@@ -209,6 +213,7 @@ export function detail(p, { isOwner, canEdit }) {
               ${fragUrl ? html`<a class="btn btn-ghost" href="${fragUrl}" target="_blank" rel="noopener noreferrer">View on Fragrantica ↗</a>` : ''}
             </section>`
           : ''}
+        ${extra}
       </div>
     </div>`;
 }

@@ -102,6 +102,8 @@ To re-run it later, use ♡ menu → **Import perfumes.json**. It's always safe:
 - **Edit:** tap ✎ on any card, or open a perfume and tap **Edit**. You can change everything, including the name, the brand, the list it's on, and the picture.
 - **Photos:** on the add/edit form, tap **📷 Take photo** or **🖼️ Choose photo**. Photos are shrunk automatically. Tap **Remove my photo** to go back to the bottle image.
 - **Notes:** every note and accord on a perfume's page has a little emoji. Tap one to see every other perfume with that note.
+- **Combos:** go to **Combos → + New combo** (or tap **💞 New combo with this** on any perfume). Give it a name, pick 2–10 perfumes, and optionally add a description and photo. Without a photo, a collage is made automatically.
+- **Share:** tap **📤 Share** on any perfume or combo to get a pretty PNG. Pick a palette, or open **Customize colors** to change each color with sliders or a hex code (like `#FF5FA2`). Name it and tap **Save palette** to keep it.
 - **Move between lists:** open a perfume and tap **Move to Collection**, **Mark as Had**, and so on.
 - **Delete:** open a perfume, tap **Delete**, then confirm.
 - **Backup:** ♡ menu → **Export backup (JSON)** downloads everything to your phone or computer. It's a good idea to do this now and then.

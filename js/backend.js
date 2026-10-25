@@ -9,6 +9,8 @@
 //   signIn(), signOut()
 //   create(data) -> id, update(id, data), remove(id)
 //   importRecords(records, onProgress) -> { added, skipped }
+//   collection(name) -> { subscribe(cb), create(data, prefix) -> id, update(id, data), remove(id) }
+//                       for the smaller collections (combos, palettes)
 // }
 
 import { EMPTY_PERFUME } from './constants.js';
@@ -33,6 +35,10 @@ function toMillis(v) {
   if (typeof v.toMillis === 'function') return v.toMillis();
   const t = Date.parse(v);
   return Number.isNaN(t) ? null : t;
+}
+
+function plainDoc(raw, id) {
+  return { ...raw, id, createdAt: toMillis(raw.createdAt), updatedAt: toMillis(raw.updatedAt) };
 }
 
 export function customId() {
@@ -83,6 +89,29 @@ async function firebaseBackend(config, ownerEmailHash) {
     mode: 'firebase',
     isConfigured: true,
     ownerConfigured,
+
+    collection(name) {
+      const c = fs.collection(db, name);
+      return {
+        subscribe(cb, onError) {
+          return fs.onSnapshot(
+            c,
+            (snap) => cb(snap.docs.map((d) => plainDoc(d.data({ serverTimestamps: 'estimate' }), d.id))),
+            (err) => {
+              console.error(err);
+              onError?.(err);
+            },
+          );
+        },
+        async create(data, prefix) {
+          const id = `${prefix}-${Date.now()}`;
+          await fs.setDoc(fs.doc(c, id), stamp({ ...strip(data), createdAt: fs.serverTimestamp() }));
+          return id;
+        },
+        update: (id, data) => fs.setDoc(fs.doc(c, id), stamp(strip(data)), { merge: true }),
+        remove: (id) => fs.deleteDoc(fs.doc(c, id)),
+      };
+    },
 
     subscribe(cb, onError) {
       return fs.onSnapshot(
@@ -293,6 +322,48 @@ function localBackend() {
       for (const { id, ...fields } of updates) docs[id] = { ...docs[id], ...fields, notesImported: true };
       save();
       emit();
+    },
+    collection(name) {
+      const key = `perfume-journal-demo-${name}`;
+      const subs = new Set();
+      const read = () => {
+        try {
+          return JSON.parse(localStorage.getItem(key)) || {};
+        } catch {
+          return {};
+        }
+      };
+      const write = (all) => {
+        try {
+          localStorage.setItem(key, JSON.stringify(all));
+        } catch (err) {
+          console.warn('Demo storage is full', err);
+        }
+        const list = Object.entries(all).map(([id, d]) => plainDoc(d, id));
+        subs.forEach((cb) => cb(list));
+      };
+      return {
+        subscribe(cb) {
+          subs.add(cb);
+          queueMicrotask(() => cb(Object.entries(read()).map(([id, d]) => plainDoc(d, id))));
+          return () => subs.delete(cb);
+        },
+        async create(data, prefix) {
+          const id = `${prefix}-${Date.now()}`;
+          write({ ...read(), [id]: { ...strip(data), createdAt: Date.now(), updatedAt: Date.now() } });
+          return id;
+        },
+        async update(id, data) {
+          const all = read();
+          all[id] = { ...all[id], ...strip(data), updatedAt: Date.now() };
+          write(all);
+        },
+        async remove(id) {
+          const all = read();
+          delete all[id];
+          write(all);
+        },
+      };
     },
     resetDemo() {
       docs = Object.fromEntries(SAMPLE_PERFUMES.map(({ id, ...p }) => [id, p]));
