@@ -3,6 +3,7 @@
 import { STATUSES, STATUS_BY_ID, LONGEVITY, SILLAGE, SORTS } from './constants.js';
 import { html, raw, safeUrl, formatDate } from './util.js';
 import { imgTag } from './images.js';
+import { noteEmoji } from './notes.js';
 
 export function hearts(rating, { size = '' } = {}) {
   const r = Math.round(rating || 0);
@@ -110,6 +111,18 @@ function chips(list, cls = '') {
   return html`<ul class="chips ${cls}">${list.map((x) => html`<li class="chip">${x}</li>`)}</ul>`;
 }
 
+export function noteHref(note) {
+  return `#/note/${encodeURIComponent(note.trim())}`;
+}
+
+/** Notes and accords: an emoji each, and a link to every perfume sharing that note. */
+function noteChips(list, cls = '') {
+  if (!list?.length) return '';
+  return html`<ul class="chips ${cls}">${list.map(
+    (n) => html`<li><a class="chip note-chip" href="${noteHref(n)}" title="Other perfumes with ${n}"><span class="note-emoji" aria-hidden="true">${noteEmoji(n)}</span> ${n}</a></li>`,
+  )}</ul>`;
+}
+
 function meter(value, scale, label) {
   const i = scale.indexOf(value);
   if (i < 0) return '';
@@ -135,9 +148,9 @@ export function detail(p, { isOwner, canEdit }) {
   const hasNotes = p.topNotes.length || p.heartNotes.length || p.baseNotes.length;
   const pyramid = hasNotes
     ? html`<div class="pyramid">
-        ${p.topNotes.length ? html`<div class="tier"><h4>Top</h4>${chips(p.topNotes, 'top')}</div>` : ''}
-        ${p.heartNotes.length ? html`<div class="tier"><h4>Heart</h4>${chips(p.heartNotes, 'heart')}</div>` : ''}
-        ${p.baseNotes.length ? html`<div class="tier"><h4>Base</h4>${chips(p.baseNotes, 'base')}</div>` : ''}
+        ${p.topNotes.length ? html`<div class="tier"><h4>Top</h4>${noteChips(p.topNotes, 'top')}</div>` : ''}
+        ${p.heartNotes.length ? html`<div class="tier"><h4>Heart</h4>${noteChips(p.heartNotes, 'heart')}</div>` : ''}
+        ${p.baseNotes.length ? html`<div class="tier"><h4>Base</h4>${noteChips(p.baseNotes, 'base')}</div>` : ''}
       </div>`
     : '';
   const wear = p.season.length || p.occasion.length
@@ -155,7 +168,7 @@ export function detail(p, { isOwner, canEdit }) {
 
   return html`
     <div class="detail">
-      <a href="#/" class="back" data-action="back"><span aria-hidden="true">←</span> Back to journal</a>
+      <a href="#/" class="back" data-action="back"><span aria-hidden="true">←</span> Back</a>
       <div class="detail-hero">
         <div class="detail-img polaroid">${raw(imgTag(p))}<span class="tape" aria-hidden="true"></span></div>
         <div class="detail-head">
@@ -182,7 +195,7 @@ export function detail(p, { isOwner, canEdit }) {
         ${section('My journal', '📖', para(p.review), 'No journal entry yet. Tap Edit to write one.', isOwner)}
         ${section('Memories', '💌', para(p.memories), '', isOwner)}
         ${section('Notes', '🌸', pyramid, 'Add top, heart and base notes.', isOwner)}
-        ${section('Accords', '🎨', chips(p.accords, 'accord'), '', isOwner)}
+        ${section('Accords', '🎨', noteChips(p.accords, 'accord'), '', isOwner)}
         ${section('When to wear', '🗓️', wear, '', isOwner)}
         ${section('Performance', '💫', perf, '', isOwner)}
         ${facts.length || fragUrl
@@ -242,8 +255,34 @@ export function stats(perfumes) {
         </section>
         ${topNotes.length
           ? html`<section class="panel"><h3><span aria-hidden="true">🌷</span> Notes & accords you love</h3>
-              <ul class="chips cloud">${topNotes.map(([n, c]) => html`<li class="chip" style="--w:${Math.min(1.5, 0.9 + c * 0.1)}">${n} <small>×${c}</small></li>`)}</ul></section>`
+              <ul class="chips cloud">${topNotes.map(([n, c]) => html`<li><a class="chip note-chip" href="${noteHref(n)}" style="--w:${Math.min(1.5, 0.9 + c * 0.1)}"><span aria-hidden="true">${noteEmoji(n)}</span> ${n} <small>×${c}</small></a></li>`)}</ul></section>`
           : ''}
       </div>
+    </div>`;
+}
+
+const TIER_LABEL = { topNotes: 'top', heartNotes: 'heart', baseNotes: 'base', accords: 'accord' };
+
+/** Every perfume containing a note. matches: [{ perfume, where: ['topNotes', ...] }] */
+export function notePage(note, matches, { isOwner, canEdit, loaded }) {
+  const count = matches.length;
+  return html`
+    <div class="note-page">
+      <a href="#/" class="back" data-action="back"><span aria-hidden="true">←</span> Back</a>
+      <div class="note-hero">
+        <span class="note-hero-emoji" aria-hidden="true">${noteEmoji(note)}</span>
+        <div>
+          <p class="eyebrow">Note</p>
+          <h1 class="page-title">${note}</h1>
+          <p class="subtitle">${loaded ? `${count} ${count === 1 ? 'perfume' : 'perfumes'} with this note ♡` : 'Loading…'}</p>
+        </div>
+      </div>
+      ${loaded && !count
+        ? html`<div class="empty"><h3>No perfumes with this note</h3><p>Add notes to a perfume and it will show up here.</p></div>`
+        : html`<div class="grid">${matches.map(({ perfume, where }) => html`
+            <div class="note-card">
+              ${card(perfume, { isOwner, canEdit: canEdit(perfume) })}
+              <p class="note-where">${where.map((w) => TIER_LABEL[w]).join(' · ')}</p>
+            </div>`)}</div>`}
     </div>`;
 }

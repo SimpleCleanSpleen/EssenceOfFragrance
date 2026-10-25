@@ -43,10 +43,10 @@ function isConfigured(config) {
   return Boolean(config?.apiKey && !config.apiKey.startsWith('YOUR_') && config.projectId);
 }
 
-export async function createBackend(config, ownerUid) {
+export async function createBackend(config, ownerEmailHash) {
   if (isConfigured(config)) {
     try {
-      return await firebaseBackend(config, ownerUid);
+      return await firebaseBackend(config, ownerEmailHash);
     } catch (err) {
       console.error('Firebase failed to start, falling back to demo mode', err);
     }
@@ -56,7 +56,7 @@ export async function createBackend(config, ownerUid) {
 
 /* ---------------------------------------------------------------- Firebase */
 
-async function firebaseBackend(config, ownerUid) {
+async function firebaseBackend(config, ownerEmailHash) {
   const [{ initializeApp }, auth, fs] = await Promise.all([
     import(`${SDK}/firebase-app.js`),
     import(`${SDK}/firebase-auth.js`),
@@ -75,7 +75,7 @@ async function firebaseBackend(config, ownerUid) {
   }
   const authInst = auth.getAuth(app);
   const col = fs.collection(db, 'perfumes');
-  const ownerConfigured = Boolean(ownerUid && !ownerUid.startsWith('YOUR_'));
+  const ownerConfigured = /^[0-9a-f]{64}$/.test(ownerEmailHash || '');
 
   const stamp = (data) => ({ ...data, updatedAt: fs.serverTimestamp() });
 
@@ -87,7 +87,8 @@ async function firebaseBackend(config, ownerUid) {
     subscribe(cb, onError) {
       return fs.onSnapshot(
         col,
-        (snap) => cb(snap.docs.map((d) => normalize(d.data({ serverTimestamps: 'estimate' }), d.id))),
+        { includeMetadataChanges: true }, // so we learn when the server confirms an empty journal
+        (snap) => cb(snap.docs.map((d) => normalize(d.data({ serverTimestamps: 'estimate' }), d.id)), { fromCache: snap.metadata.fromCache }),
         (err) => {
           console.error(err);
           onError?.(err);
@@ -97,8 +98,9 @@ async function firebaseBackend(config, ownerUid) {
 
     onAuth(cb) {
       auth.getRedirectResult(authInst).catch(() => {});
-      return auth.onAuthStateChanged(authInst, (user) => {
-        cb({ user, isOwner: Boolean(user && ownerConfigured && user.uid === ownerUid) });
+      return auth.onAuthStateChanged(authInst, async (user) => {
+        const isOwner = Boolean(user?.emailVerified && ownerConfigured && (await sha256(user.email)) === ownerEmailHash);
+        cb({ user, isOwner });
       });
     },
 
@@ -158,6 +160,13 @@ async function firebaseBackend(config, ownerUid) {
       return { added: todo.length, skipped };
     },
   };
+}
+
+// The owner's email is stored only as a hash, so it isn't published in the site's code.
+export async function sha256(text) {
+  const bytes = new TextEncoder().encode(String(text || '').trim().toLowerCase());
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 // Fields that only exist client-side and must never be written.

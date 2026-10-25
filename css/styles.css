@@ -444,6 +444,26 @@ main { max-width: 1180px; margin: 0 auto; padding: 16px; outline: none; }
 .facts dt { color: var(--ink-soft); }
 .facts dd { margin: 0; font-weight: 700; text-align: right; }
 
+/* note chips + note page */
+.note-chip {
+  display: inline-flex; align-items: center; gap: 5px; text-decoration: none;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.note-chip:hover { transform: translateY(-2px) scale(1.04); box-shadow: 0 4px 10px rgba(142, 68, 201, 0.18); }
+.note-emoji { font-size: 1.05em; }
+.note-hero { display: flex; align-items: center; gap: 16px; margin: 8px 0 18px; }
+.note-hero-emoji {
+  display: grid; place-items: center; flex: none; width: 76px; height: 76px; border-radius: 50%;
+  font-size: 2.4rem; background: #fff; box-shadow: var(--shadow); border: 3px solid var(--blush);
+  animation: bob 3s ease-in-out infinite;
+}
+.note-hero .subtitle { margin: 0; }
+.note-card { display: flex; flex-direction: column; }
+.note-where {
+  margin: 6px 0 0; text-align: center; font-size: 0.78rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft);
+}
+
 /* ------------------------------------------------------------ stats */
 
 .page-title { font-family: var(--font-script); font-weight: 400; font-size: 2rem; color: var(--pink-ink); }

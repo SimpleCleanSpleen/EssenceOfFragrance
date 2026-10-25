@@ -9,6 +9,7 @@
 - 💖 **Four lists** with live counts: *In My Collection*, *Used to Own*, *Wishlist*, *To Test* (plus *Everything*)
 - 🔍 **Search** across name, brand, notes and accords, plus a **brand filter** and **sorting** (A–Z, brand, rating, recently added)
 - ⚡ **Fast with 700+ perfumes**: cards render in pages of 36 with infinite scroll, images lazy-load, and Firestore caches data on the device
+- 🌸 **Notes with emojis** (🍦 vanilla, 🌹 rose, 🍋 bergamot…): tap any note or accord to see every perfume that has it
 - 📖 **Journal page per perfume**: review, memories, top/heart/base notes, accords, season, occasion, longevity and sillage meters, heart rating, where bought, date added, and a Fragrantica link
 - ✏️ **Owner-only editing** (Google sign-in): add brand-new perfumes (even ones that aren't on Fragrantica), edit *every* field of *every* perfume, delete with confirmation, and move between lists in one tap
 - 📷 **Photos from camera or gallery**, resized to 800px and compressed in the browser (WebP, with JPEG fallback), then stored inline; replace or remove any time
@@ -22,15 +23,16 @@ No build step. Plain HTML, CSS and ES modules; the Firebase modular SDK is loade
 
 ```
 index.html               App shell
-firebase-config.js       Your Firebase web config + OWNER_UID (public by design)
+firebase-config.js       Your Firebase web config + owner email hash (public by design)
 firebase-config.example.js
 firestore.rules          Public read, owner-only write, basic validation
 css/styles.css           All styles (mobile-first)
-js/app.js                State, routing (#/, #/p/<id>, #/stats), actions, import/export
+js/app.js                State, routing (#/, #/p/<id>, #/note/<note>, #/stats), actions, import/export
 js/views.js              Pure HTML builders for cards, detail, stats
 js/form.js               Add/edit dialog + confirm dialog
 js/backend.js            Firebase backend and local demo backend (same interface)
 js/images.js             The image layer: display, fallback, compression
+js/notes.js              Note → emoji lookup and note matching
 js/names.js              Tidies slug-damaged names ("Angel s Bread" → "Angel's Bread")
 js/samples.js            Sample perfumes shown before the import
 data/perfumes.json       734 perfumes converted from the Fragrantica export
@@ -59,7 +61,7 @@ It also keeps `originalName` / `originalBrand` (the untidied imported text) and 
 | for test | `testing` |
 | Wardrobe | follows its badge (Want → `want`, Have → `have`) |
 
-The in-app **Import** (owner menu) first asks Firestore *on the server* which perfumes already exist, then writes only the missing ones in batches of 450 (Firestore's limit is 500). Re-running it never duplicates or overwrites anything. Names are tidied on import, and the original is kept in `originalName`.
+The import runs automatically the first time the owner signs in to an empty journal, and can be re-run from the owner menu. It first asks Firestore *on the server* which perfumes already exist, then writes only the missing ones in batches of 450 (Firestore's limit is 500). Re-running it never duplicates or overwrites anything. Names are tidied on import, and the original is kept in `originalName`.
 
 To regenerate the data from a fresh export:
 
@@ -88,6 +90,10 @@ python3 -m http.server 8000
 ```
 
 With placeholder config, the site runs in preview mode (samples and browser storage). To test against real Firebase locally, add `localhost` to Firebase → Authentication → Settings → Authorized domains (it's usually there by default).
+
+### Owner
+
+Ownership is tied to the owner's verified Google email. `firestore.rules` checks `request.auth.token.email` (the real address lives only in the rules published in the Firebase console; the repo copy has a placeholder). `firebase-config.js` holds only a SHA-256 of the email, which decides whether to show the editing buttons.
 
 ## Accessibility
 

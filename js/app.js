@@ -1,4 +1,4 @@
-import { firebaseConfig, OWNER_UID } from '../firebase-config.js';
+import { firebaseConfig, OWNER_EMAIL_SHA256 } from '../firebase-config.js';
 import { STATUSES, STATUS_BY_ID, PAGE_SIZE } from './constants.js';
 import { html, render, $, debounce, fold, dailyIndex, toast } from './util.js';
 import { createBackend, normalize } from './backend.js';
@@ -8,6 +8,7 @@ import { tidyName } from './names.js';
 import { confetti } from './confetti.js';
 import { openEditor, confirmDialog, friendlyError } from './form.js';
 import * as V from './views.js';
+import { noteKey } from './notes.js';
 
 const SITE_TITLE = document.title;
 const PREFS_KEY = 'perfume-journal-prefs';
@@ -100,7 +101,7 @@ function renderChrome() {
   } else if (state.user && !owner) {
     banners.push(b.ownerConfigured
       ? html`<div class="banner"><span aria-hidden="true">👋</span><p>You’re signed in, but this journal belongs to someone else, so it’s read-only. <button class="link-btn" data-action="signout">Sign out</button></p></div>`
-      : html`<div class="banner"><span aria-hidden="true">🔑</span><p><strong>Almost there!</strong> Your user ID is <code>${state.user.uid}</code> <button class="link-btn" data-action="copy-uid">Copy</button>. Paste it as OWNER_UID in <em>firebase-config.js</em> and <em>firestore.rules</em> (see SETUP.md step 7).</p></div>`);
+      : html`<div class="banner"><span aria-hidden="true">🔑</span><p><strong>Almost there!</strong> No owner is set yet. Follow SETUP.md step 7 to make <code>${state.user.email}</code> the owner.</p></div>`);
   }
   if (usingSamples()) {
     banners.push(owner
@@ -166,6 +167,20 @@ function renderDetail(id) {
   document.title = `${p.name} · ${SITE_TITLE}`;
 }
 
+const NOTE_FIELDS = ['topNotes', 'heartNotes', 'baseNotes', 'accords'];
+
+function renderNote(note) {
+  const key = noteKey(note);
+  const matches = [];
+  for (const p of perfumes()) {
+    const where = NOTE_FIELDS.filter((f) => p[f].some((n) => noteKey(n) === key));
+    if (where.length) matches.push({ perfume: p, where });
+  }
+  matches.sort((a, b) => b.perfume.rating - a.perfume.rating || a.perfume.name.localeCompare(b.perfume.name));
+  render($('#view-note'), V.notePage(note, matches, { isOwner: state.isOwner, canEdit, loaded: state.loaded }));
+  document.title = `${note} · ${SITE_TITLE}`;
+}
+
 function renderStats() {
   render($('#view-stats'), V.stats(perfumes()));
   document.title = `Stats · ${SITE_TITLE}`;
@@ -176,12 +191,14 @@ function renderRoute() {
   $('#view-gallery').hidden = r.name !== 'gallery';
   $('#view-detail').hidden = r.name !== 'detail';
   $('#view-stats').hidden = r.name !== 'stats';
+  $('#view-note').hidden = r.name !== 'note';
   $$nav();
   if (r.name === 'gallery') {
     document.title = SITE_TITLE;
     renderGallery();
   } else if (r.name === 'detail') renderDetail(r.id);
   else if (r.name === 'stats') renderStats();
+  else if (r.name === 'note') renderNote(r.note);
 }
 
 function $$nav() {
@@ -210,6 +227,7 @@ function onRoute() {
 
   if (name === 'p' && rest.length) state.route = { name: 'detail', id: decodeURIComponent(rest.join('/')) };
   else if (name === 'stats') state.route = { name: 'stats' };
+  else if (name === 'note' && rest.length) state.route = { name: 'note', note: decodeURIComponent(rest.join('/')) };
   else state.route = { name: 'gallery' };
 
   renderRoute();
@@ -282,13 +300,25 @@ async function movePerfume(id, status) {
   }
 }
 
-async function runImport() {
-  const ok = await confirmDialog({
-    title: 'Import your perfumes?',
-    text: 'This adds every perfume from data/perfumes.json. Perfumes already in your journal are skipped, so your edits are safe. You can run it again any time.',
-    ok: 'Import',
-  });
-  if (!ok) return;
+// The first time the owner signs in to an empty journal, fill it automatically.
+let autoImportStarted = false;
+function maybeAutoImport() {
+  const b = state.backend;
+  if (autoImportStarted || b?.mode !== 'firebase' || !state.isOwner || !state.loaded || !state.fromServer) return;
+  if (state.all.length) return;
+  autoImportStarted = true;
+  runImport({ auto: true });
+}
+
+async function runImport({ auto = false } = {}) {
+  if (!auto) {
+    const ok = await confirmDialog({
+      title: 'Import your perfumes?',
+      text: 'This adds every perfume from data/perfumes.json. Perfumes already in your journal are skipped, so your edits are safe. You can run it again any time.',
+      ok: 'Import',
+    });
+    if (!ok) return;
+  }
 
   const dlg = $('#progress');
   const show = (title, pct, text) => {
@@ -296,7 +326,8 @@ async function runImport() {
       <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}"><span style="width:${pct}%"></span></div>
       <p aria-live="polite">${text}</p><form method="dialog"><button class="btn" ${pct < 100 ? 'hidden' : ''}>Yay!</button></form></div>`);
   };
-  show('Importing… 💫', 2, 'Reading the perfume list…');
+  const title = auto ? 'Setting up your journal… 💫' : 'Importing… 💫';
+  show(title, 2, auto ? 'Welcome! Adding all your perfumes for the first time…' : 'Reading the perfume list…');
   dlg.showModal();
   dlg.oncancel = (e) => e.preventDefault(); // keep it open until done
 
@@ -323,7 +354,7 @@ async function runImport() {
       });
     const result = await state.backend.importRecords(records, ({ done, total, skipped }) => {
       const pct = total ? (done / total) * 100 : 100;
-      show('Importing… 💫', Math.max(2, Math.min(99, pct)), `${done} of ${total} new perfumes saved${skipped ? ` · ${skipped} already in your journal` : ''}`);
+      show(title, Math.max(2, Math.min(99, pct)), `${done} of ${total} new perfumes saved${skipped ? ` · ${skipped} already in your journal` : ''}`);
     });
     show('All done! 🎉', 100, `Added ${result.added} perfumes. Skipped ${result.skipped} that were already there.`);
     dlg.oncancel = null;
@@ -372,18 +403,19 @@ const ACTIONS = {
   'reset-demo': async () => {
     if (await confirmDialog({ title: 'Reset the demo?', text: 'This clears everything on this device and brings back the samples.', ok: 'Reset' })) state.backend.resetDemo();
   },
-  'copy-uid': () => navigator.clipboard?.writeText(state.user.uid).then(() => toast('Copied!')),
   back: (el, e) => {
-    if (history.length > 1 && lastRouteFromGallery) {
+    if (navStack.length > 1) {
       e.preventDefault();
       history.back();
     }
   },
 };
 
-let lastRouteFromGallery = false;
+// In-app history, so "Back" returns to wherever you came from (e.g. note page -> perfume).
+const navStack = [location.hash];
 window.addEventListener('hashchange', () => {
-  lastRouteFromGallery = state.route.name === 'gallery';
+  if (navStack.length > 1 && navStack[navStack.length - 2] === location.hash) navStack.pop();
+  else navStack.push(location.hash);
 });
 
 /* ------------------------------------------------------------ wiring */
@@ -458,20 +490,23 @@ async function main() {
   wire();
   onRoute();
 
-  state.backend = await createBackend(firebaseConfig, OWNER_UID);
+  state.backend = await createBackend(firebaseConfig, OWNER_EMAIL_SHA256);
   renderChrome();
 
   state.backend.onAuth(({ user, isOwner }) => {
     state.user = user;
     state.isOwner = isOwner;
     renderAll();
+    maybeAutoImport();
   });
 
   state.backend.subscribe(
-    (list) => {
+    (list, meta) => {
       state.all = list;
       state.loaded = true;
+      state.fromServer = !meta?.fromCache;
       renderAll();
+      maybeAutoImport();
     },
     (err) => {
       state.loaded = true;

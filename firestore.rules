@@ -2,16 +2,19 @@ rules_version = '2';
 
 // Perfume journal security rules.
 // - Anyone can read (the journal is public).
-// - Only the owner can add, edit or delete.
+// - Only the owner (signed in with Google, verified email) can add, edit or delete.
 //
-// Replace YOUR_OWNER_UID below with your Firebase user ID (SETUP.md, step 7).
-// It must match OWNER_UID in firebase-config.js.
+// Replace owner_email@gmail.com below with the owner's Google email, in lowercase
+// (SETUP.md, step 6). Paste the edited rules into the Firebase console, not into
+// this public file, if you'd rather keep the address private.
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
     function isOwner() {
-      return request.auth != null && request.auth.uid == 'YOUR_OWNER_UID';
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() == 'owner_email@gmail.com';
     }
 
     function validPerfume() {

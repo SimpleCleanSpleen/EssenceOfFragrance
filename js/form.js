@@ -202,7 +202,7 @@ function readForm(form, photo) {
 
 export function friendlyError(err) {
   const code = err?.code || '';
-  if (code.includes('permission-denied')) return 'Firebase said no. Check that OWNER_UID matches your account (see SETUP.md).';
+  if (code.includes('permission-denied')) return 'Firebase said no. Make sure you’re signed in as the journal’s owner and the database rules are published (SETUP.md step 6).';
   if (code.includes('unavailable')) return 'You seem to be offline. Try again in a moment.';
   if (code.includes('invalid-argument') || /larger than|exceeds/i.test(err?.message)) return 'That entry is too big to save. Try a smaller photo.';
   return err?.message || 'Something went wrong. Please try again.';

@@ -57,7 +57,7 @@ You're on the free **Spark** plan by default. Don't upgrade; nothing here needs 
    };
    ```
 
-6. Leave `OWNER_UID` as it is for now. Click **Commit changes**.
+6. Leave `OWNER_EMAIL_SHA256` as it is for now. Click **Commit changes**.
 
 > 🔐 **Is it safe to publish these keys?** Yes. Firebase web keys are designed to be public. Your journal is protected by the security rules you'll set up in Step 6, which only let *you* make changes.
 
@@ -75,34 +75,24 @@ You're on the free **Spark** plan by default. Don't upgrade; nothing here needs 
 3. Choose **Start in production mode** and click **Create**.
 4. When it's ready, click the **Rules** tab.
 5. Delete everything in the editor. Then open **`firestore.rules`** from your GitHub repo, copy all of it, and paste it into the Firebase editor.
-6. Click **Publish**.
-
-The `YOUR_OWNER_UID` placeholder is still in there, so for now nobody can edit (which is fine). You'll fix that next.
+6. In the Firebase editor, find `'owner_email@gmail.com'` and replace it with the owner's Google email, **all lowercase**, keeping the quotes. Do this in Firebase only, so the address stays out of the public GitHub file.
+7. Click **Publish**.
 
 ## Step 7: Make yourself the owner
 
-Your "UID" is a long ID that Firebase gives your Google account. You need to tell the website and the rules that it belongs to the owner.
+The website shows the **+ Add perfume** button only to the owner. To keep the email private, `firebase-config.js` stores a scrambled "fingerprint" of it (a SHA-256 hash) instead of the address.
 
-**Find your UID** (either way works):
-- **Easy way:** wait a minute for GitHub to redeploy after Step 4, then open your site, scroll to the very bottom and click **Owner sign-in ♡**. Sign in with Google. A banner will show **your user ID** with a **Copy** button.
-- **Or:** in Firebase, go to **Authentication → Users**. After you've signed in once, you'll see your email with a **User UID** column. Click the copy icon next to it.
+1. Make the fingerprint: open any "SHA-256 generator" website (or, on a Mac/Linux terminal, run `echo -n "owner@gmail.com" | sha256sum`) and enter the owner's email **in lowercase**. You'll get 64 letters and numbers.
+2. In GitHub, edit **`firebase-config.js`** and paste it as `OWNER_EMAIL_SHA256`, keeping the quotes. Click **Commit changes**.
 
-**Paste it in two places:**
-1. **Website:** in GitHub, edit **`firebase-config.js`** and replace `YOUR_OWNER_UID` with your UID (keep the quotes):
-   `export const OWNER_UID = 'aB3dE5fG7hI9jK1lM3nO5pQ7rS9t';`
-   Then click **Commit changes**.
-2. **Rules:** in Firebase → **Firestore Database → Rules**, find `'YOUR_OWNER_UID'` and replace it with the same UID (keep the quotes). Click **Publish**.
-   (Also update `firestore.rules` in GitHub the same way, so your copy stays in sync.)
+Wait a minute or two for GitHub to redeploy (check the **Actions** tab for a green tick ✅).
 
-Wait a minute or two for GitHub to redeploy (check the **Actions** tab for a green tick ✅), then reload your site. When you sign in you'll see the **+ Add perfume** button and a ♡ menu in the top corner. You're the owner now!
+## Step 8: Sign in. Your perfumes import themselves ✨
 
-## Step 8: Import your 734 perfumes
+1. Open your site, scroll to the very bottom, and tap **Owner sign-in ♡**. Sign in with the owner's Google account.
+2. The first time the owner signs in to an empty journal, it **imports all 734 perfumes automatically**, with a progress bar. 🎉
 
-1. On your site, signed in as the owner, tap the **♡** menu in the top right corner.
-2. Choose **Import perfumes.json** and confirm.
-3. Watch the progress bar. It takes a few seconds. 🎉
-
-It's **safe to run again** at any time: perfumes that are already in your journal are skipped, so your edits are never overwritten.
+To re-run it later, use ♡ menu → **Import perfumes.json**. It's always safe: perfumes already in your journal are skipped, so your edits are never overwritten.
 
 ---
 
@@ -111,6 +101,7 @@ It's **safe to run again** at any time: perfumes that are already in your journa
 - **Add a perfume:** tap **+ Add perfume**. Only brand and name are required.
 - **Edit:** tap ✎ on any card, or open a perfume and tap **Edit**. You can change everything, including the name, the brand, the list it's on, and the picture.
 - **Photos:** on the add/edit form, tap **📷 Take photo** or **🖼️ Choose photo**. Photos are shrunk automatically. Tap **Remove my photo** to go back to the bottle image.
+- **Notes:** every note and accord on a perfume's page has a little emoji. Tap one to see every other perfume with that note.
 - **Move between lists:** open a perfume and tap **Move to Collection**, **Mark as Had**, and so on.
 - **Delete:** open a perfume, tap **Delete**, then confirm.
 - **Backup:** ♡ menu → **Export backup (JSON)** downloads everything to your phone or computer. It's a good idea to do this now and then.
@@ -121,8 +112,8 @@ It's **safe to run again** at any time: perfumes that are already in your journa
 |---|---|
 | Still says "Preview mode" | `firebase-config.js` still has `YOUR_...` values, or GitHub hasn't redeployed yet. Check the **Actions** tab. |
 | "This website address isn't authorized" when signing in | Add `USERNAME.github.io` in Firebase → Authentication → Settings → Authorized domains (Step 5). |
-| Signed in but no **+ Add perfume** button | `OWNER_UID` in `firebase-config.js` doesn't match your UID exactly. Look for missing characters or extra spaces. |
-| "Firebase said no…" when saving | The UID in your Firestore **Rules** doesn't match yet, or you forgot to click **Publish** (Step 7). |
+| Signed in but no **+ Add perfume** button | `OWNER_EMAIL_SHA256` doesn't match. Make sure you hashed the email in lowercase with no spaces, and that you signed in with that same Google account. |
+| "Firebase said no…" when saving | The email in your Firestore **Rules** doesn't match the account you signed in with, or you forgot to click **Publish** (Step 6). |
 | "Firestore rules are blocking reads" | Re-paste the rules from `firestore.rules` and click **Publish** (Step 6). |
 | Sign-in popup doesn't appear on iPhone | Allow pop-ups for the site in Settings → Safari, or try again; it falls back to a full-page sign-in. |
 | A bottle image is missing | Some Fragrantica images aren't available. A cute placeholder bottle shows instead. Upload your own photo if you like! |
