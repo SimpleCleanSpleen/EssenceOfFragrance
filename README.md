@@ -37,17 +37,19 @@ js/names.js              Tidies slug-damaged names ("Angel s Bread" → "Angel's
 js/samples.js            Sample perfumes shown before the import
 data/perfumes.json       734 perfumes converted from the Fragrantica export
 tools/convert.py         Rebuilds data/perfumes.json from fragrantica-with-lists.json
+tools/merge_notes.py     Copies notes from data/perfumes-with-notes.json into data/perfumes.json
 .github/workflows/deploy.yml   Publishes to GitHub Pages on every push to main
 ```
 
 ### Data model (`perfumes` collection)
 
-`fragranticaId, brand, name, status, fragranticaUrl, imageUrl, photo, rating, topNotes[], heartNotes[], baseNotes[], accords[], season[], occasion[], longevity, sillage, review, memories, whereBought, createdAt, updatedAt`
+`fragranticaId, brand, name, status, fragranticaUrl, imageUrl, photo, rating, topNotes[], heartNotes[], baseNotes[], notes[], accords[], season[], occasion[], longevity, sillage, review, memories, whereBought, createdAt, updatedAt`
 
 It also keeps `originalName` / `originalBrand` (the untidied imported text) and `sourceList` (which Fragrantica list each perfume came from).
 
 - Imported perfumes use their **Fragrantica ID as the document ID**. Manually added ones get `custom-<timestamp>`.
 - `status` is one of `have | had | want | testing`.
+- `notes[]` holds notes for perfumes that Fragrantica lists without a top/heart/base pyramid.
 
 ### The import
 
@@ -67,7 +69,10 @@ To regenerate the data from a fresh export:
 
 ```sh
 python3 tools/convert.py fragrantica-with-lists.json data/perfumes.json
+python3 tools/merge_notes.py data/perfumes-with-notes.json data/perfumes.json
 ```
+
+**Notes backfill.** When the owner opens the site signed in, any perfume in Firestore that has *no notes at all* gets its notes from `data/perfumes.json` (only the note fields are written, and the perfume is flagged `notesImported` so it's never refilled). Perfumes with notes she typed herself are never touched. So to add notes for more perfumes later, update the notes file, rerun `merge_notes.py`, and push.
 
 ### Images
 

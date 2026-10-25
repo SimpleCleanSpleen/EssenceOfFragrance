@@ -60,7 +60,7 @@ function filtered() {
   if (state.brand) list = list.filter((p) => p.brand === state.brand);
   if (q) {
     list = list.filter((p) =>
-      fold([p.name, p.brand, p.originalName, ...p.accords, ...p.topNotes, ...p.heartNotes, ...p.baseNotes].join(' ')).includes(q),
+      fold([p.name, p.brand, p.originalName, ...p.accords, ...p.topNotes, ...p.heartNotes, ...p.baseNotes, ...p.notes].join(' ')).includes(q),
     );
   }
   const byName = (a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
@@ -167,7 +167,7 @@ function renderDetail(id) {
   document.title = `${p.name} · ${SITE_TITLE}`;
 }
 
-const NOTE_FIELDS = ['topNotes', 'heartNotes', 'baseNotes', 'accords'];
+const NOTE_FIELDS = ['topNotes', 'heartNotes', 'baseNotes', 'notes', 'accords'];
 
 function renderNote(note) {
   const key = noteKey(note);
@@ -300,6 +300,41 @@ async function movePerfume(id, status) {
   }
 }
 
+const PYRAMID = ['topNotes', 'heartNotes', 'baseNotes', 'notes'];
+const noteFields = (r) => Object.fromEntries(PYRAMID.map((k) => [k, Array.isArray(r[k]) ? r[k] : []]));
+
+/**
+ * Add notes from data/perfumes.json to perfumes that have none yet.
+ * Perfumes with any notes of their own (or already backfilled once) are never touched.
+ */
+let backfillStarted = false;
+async function maybeBackfillNotes() {
+  const b = state.backend;
+  if (backfillStarted || !b || !state.isOwner || !state.loaded || !state.all.length) return;
+  if (b.mode === 'firebase' && !state.fromServer) return;
+  backfillStarted = true;
+  try {
+    const res = await fetch('data/perfumes.json', { cache: 'no-cache' });
+    if (!res.ok) return;
+    const source = new Map((await res.json()).map((r) => [String(r.fragranticaId), r]));
+    const updates = [];
+    for (const p of state.all) {
+      if (p.notesImported || PYRAMID.some((k) => p[k].length)) continue;
+      const r = source.get(p.id);
+      const fields = r && noteFields(r);
+      if (fields && PYRAMID.some((k) => fields[k].length)) updates.push({ id: p.id, ...fields });
+    }
+    if (!updates.length) return;
+    toast(`Adding notes to ${updates.length} perfumes… 🌸`);
+    await b.backfillNotes(updates);
+    toast(`Added notes to ${updates.length} perfumes 🌸`);
+  } catch (err) {
+    console.error(err);
+    backfillStarted = false;
+    toast(`Couldn’t add notes: ${friendlyError(err)}`);
+  }
+}
+
 // The first time the owner signs in to an empty journal, fill it automatically.
 let autoImportStarted = false;
 function maybeAutoImport() {
@@ -350,6 +385,7 @@ async function runImport({ auto = false } = {}) {
           fragranticaUrl: r.fragranticaUrl || '',
           imageUrl: r.imageUrl || '',
           sourceList: r.sourceList || '',
+          ...noteFields(r),
         };
       });
     const result = await state.backend.importRecords(records, ({ done, total, skipped }) => {
@@ -498,6 +534,7 @@ async function main() {
     state.isOwner = isOwner;
     renderAll();
     maybeAutoImport();
+    maybeBackfillNotes();
   });
 
   state.backend.subscribe(
@@ -507,6 +544,7 @@ async function main() {
       state.fromServer = !meta?.fromCache;
       renderAll();
       maybeAutoImport();
+      maybeBackfillNotes();
     },
     (err) => {
       state.loaded = true;

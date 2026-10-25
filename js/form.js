@@ -62,6 +62,7 @@ export function openEditor(perfume, handlers) {
           ${field('heartNotes', 'Heart notes', html`<input name="heartNotes" value="${p.heartNotes.join(', ')}" placeholder="rose, jasmine">`)}
           ${field('baseNotes', 'Base notes', html`<input name="baseNotes" value="${p.baseNotes.join(', ')}" placeholder="vanilla, musk">`)}
         </div>
+        ${field('notes', 'Other notes (no top/heart/base)', html`<input name="notes" value="${p.notes.join(', ')}" placeholder="sugar, vanilla, yeast">`)}
         ${field('accords', 'Accords', html`<input name="accords" value="${p.accords.join(', ')}" placeholder="sweet, powdery, gourmand">`)}
         <p class="hint">Separate notes with commas.</p>
 
@@ -187,6 +188,7 @@ function readForm(form, photo) {
     topNotes: toList(s('topNotes')),
     heartNotes: toList(s('heartNotes')),
     baseNotes: toList(s('baseNotes')),
+    notes: toList(s('notes')),
     accords: toList(s('accords')),
     season: f.getAll('season').map(String),
     occasion: f.getAll('occasion').map(String),

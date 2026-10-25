@@ -38,6 +38,7 @@ export const EMPTY_PERFUME = {
   topNotes: [],
   heartNotes: [],
   baseNotes: [],
+  notes: [], // notes without a top/heart/base pyramid
   accords: [],
   season: [],
   occasion: [],

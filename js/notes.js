@@ -38,7 +38,19 @@ const EXACT = {
   water: '💧', 'water notes': '💧', rain: '🌧️', 'fresh': '🌬️', mint: '🌿', basil: '🌿', sage: '🌿', 'clary sage': '🌿',
   rosemary: '🌿', thyme: '🌿', 'green notes': '🌿', green: '🌿', grass: '🌱', moss: '🌿', 'oakmoss': '🌿', herbal: '🌿',
   aromatic: '🌿', earthy: '🍄', mushroom: '🍄', floral: '🌸', 'white floral': '🤍', 'yellow floral': '🌼',
-  animalic: '🐾', metallic: '🔩', soft: '☁️', warm: '🔥', cozy: '🧣',
+  animalic: '🐾', metallic: '🔩',
+  litchi: '🍒', osmanthus: '🌼', licorice: '🍬', frangipani: '🌺', geranium: '🌺', guava: '🍈', popcorn: '🍿',
+  'solar notes': '☀️', papaya: '🥭', marigold: '🌼', olibanum: '🕯️', coumarin: '🫘', coriander: '🌿', hibiscus: '🌺',
+  anise: '⭐', 'star anise': '⭐', carnation: '🌺', custard: '🍮', vanila: '🍦', croissant: '🥐', cyclamen: '🌸',
+  narcissus: '🌼', styrax: '🕯️', cassia: '🫚', marshamallow: '☁️', hedione: '🌼', mahogany: '🪵', quince: '🍐',
+  davana: '🌿', bellini: '🥂', rhubarb: '🌱', rhuburb: '🌱', ambrettolide: '🤍', cappuccino: '☕', immortelle: '🌼',
+  dates: '🌴', amaretto: '🥃', rice: '🍚', hyacinth: '🪻', hiacynth: '🪻', caraway: '🌿', papyrus: '🌾', absinthe: '🍸',
+  hawthorn: '🌸', 'palo santo': '🪵', 'carrot seeds': '🥕', carrot: '🥕', 'coca-cola': '🥤', macarons: '🍪',
+  juniper: '🫐', kumquat: '🍊', ivy: '🌿', 'dew drop': '💧', cucumber: '🥒', chamomile: '🌼', ice: '🧊',
+  macadamia: '🌰', lilac: '🪻', pomelo: '🍊', laurels: '🌿', oak: '🌳', pumpkin: '🎃', 'cade oil': '💨',
+  sorbet: '🍧', pitahaya: '🐉', opoponax: '🕯️', artemisia: '🌿', jelly: '🍬', sesame: '🌰', pimento: '🌶️',
+  bamboo: '🎋', yeast: '🍞', baobab: '🌳', verbena: '🌿', mate: '🧉', martini: '🍸', civet: '🐾',
+  'monoi oil': '🌺', 'ebony tree': '🪵', buckwheat: '🌾', 'dulce de leche': '🍮', loukhoum: '🍬', panacotta: '🍮', soft: '☁️', warm: '🔥', cozy: '🧣',
 };
 
 // Keyword families for everything else (checked in order).
@@ -52,7 +64,7 @@ const FAMILIES = [
   [/pepper|spic|cinnamon|ginger|cardamom|clove|nutmeg|saffron/, '🌶️'],
   [/wood|cedar|sandal|oud|vetiver|birch|pine|fir|cypress/, '🪵'], [/leather|suede/, '👜'], [/tobacco|patchouli/, '🍂'],
   [/incense|myrrh|resin|benzoin|labdanum|balsam/, '🕯️'], [/amber/, '🔶'], [/musk/, '🤍'], [/powder|iris|orris/, '🧸'],
-  [/sea|marine|aqua|ozon|water|rain/, '🌊'], [/mint|basil|sage|herb|green|leaf|leaves|grass|moss|tomato|fig leaf/, '🌿'],
+  [/ambr|cypriol|nagarmotha/, '🔶'], [/accord$/, '✨'],   [/sea|marine|aqua|ozon|water|rain/, '🌊'], [/mint|basil|sage|herb|green|leaf|leaves|grass|moss|tomato|fig leaf/, '🌿'],
   [/lily|tulip|lotus/, '🌷'], [/violet|lavender/, '🪻'], [/flower|blossom|petal|floral|peony|magnolia|orchid|bloom/, '🌸'],
   [/fruit|melon|mango|pineapple|lychee|plum|grape/, '🍓'], [/smoke|smoky|ash|burn/, '💨'], [/salt/, '🧂'],
 ];

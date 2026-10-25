@@ -18,7 +18,7 @@ const SDK = 'https://www.gstatic.com/firebasejs/10.12.2';
 
 export function normalize(raw, id) {
   const p = { ...EMPTY_PERFUME, ...raw, id };
-  for (const k of ['topNotes', 'heartNotes', 'baseNotes', 'accords', 'season', 'occasion']) {
+  for (const k of ['topNotes', 'heartNotes', 'baseNotes', 'notes', 'accords', 'season', 'occasion']) {
     if (!Array.isArray(p[k])) p[k] = [];
   }
   p.rating = Math.max(0, Math.min(5, Number(p.rating) || 0));
@@ -159,6 +159,17 @@ async function firebaseBackend(config, ownerEmailHash) {
       }
       return { added: todo.length, skipped };
     },
+
+    // updates: [{ id, ...noteFields }]; only those fields are written.
+    async backfillNotes(updates) {
+      for (let i = 0; i < updates.length; i += 450) {
+        const batch = fs.writeBatch(db);
+        for (const { id, ...fields } of updates.slice(i, i + 450)) {
+          batch.update(fs.doc(col, id), { ...fields, notesImported: true, updatedAt: fs.serverTimestamp() });
+        }
+        await batch.commit();
+      }
+    },
   };
 }
 
@@ -277,6 +288,11 @@ function localBackend() {
       save();
       emit();
       return { added: todo.length, skipped };
+    },
+    async backfillNotes(updates) {
+      for (const { id, ...fields } of updates) docs[id] = { ...docs[id], ...fields, notesImported: true };
+      save();
+      emit();
     },
     resetDemo() {
       docs = Object.fromEntries(SAMPLE_PERFUMES.map(({ id, ...p }) => [id, p]));

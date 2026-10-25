@@ -106,6 +106,10 @@ const BOTTLE_DOODLE = `<svg class="empty-art" viewBox="0 0 120 120" aria-hidden=
   <path d="M16 20l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="#A8D8FF"/>
 </svg>`;
 
+function hasPyramid(p) {
+  return p.topNotes.length || p.heartNotes.length || p.baseNotes.length;
+}
+
 function chips(list, cls = '') {
   if (!list?.length) return '';
   return html`<ul class="chips ${cls}">${list.map((x) => html`<li class="chip">${x}</li>`)}</ul>`;
@@ -145,12 +149,13 @@ function para(text) {
 }
 
 export function detail(p, { isOwner, canEdit }) {
-  const hasNotes = p.topNotes.length || p.heartNotes.length || p.baseNotes.length;
+  const hasNotes = p.topNotes.length || p.heartNotes.length || p.baseNotes.length || p.notes.length;
   const pyramid = hasNotes
     ? html`<div class="pyramid">
         ${p.topNotes.length ? html`<div class="tier"><h4>Top</h4>${noteChips(p.topNotes, 'top')}</div>` : ''}
         ${p.heartNotes.length ? html`<div class="tier"><h4>Heart</h4>${noteChips(p.heartNotes, 'heart')}</div>` : ''}
         ${p.baseNotes.length ? html`<div class="tier"><h4>Base</h4>${noteChips(p.baseNotes, 'base')}</div>` : ''}
+        ${p.notes.length ? html`<div class="tier">${hasPyramid(p) ? html`<h4>Also</h4>` : ''}${noteChips(p.notes, 'heart')}</div>` : ''}
       </div>`
     : '';
   const wear = p.season.length || p.occasion.length
@@ -226,7 +231,7 @@ export function stats(perfumes) {
   const loved = perfumes.filter((p) => p.rating > 0).sort((a, b) => b.rating - a.rating || a.name.localeCompare(b.name)).slice(0, 8);
 
   const noteCounts = {};
-  perfumes.forEach((p) => [...p.topNotes, ...p.heartNotes, ...p.baseNotes, ...p.accords].forEach((n) => {
+  perfumes.forEach((p) => [...p.topNotes, ...p.heartNotes, ...p.baseNotes, ...p.notes, ...p.accords].forEach((n) => {
     const k = n.trim().toLowerCase();
     if (k) noteCounts[k] = (noteCounts[k] || 0) + 1;
   }));
@@ -261,7 +266,7 @@ export function stats(perfumes) {
     </div>`;
 }
 
-const TIER_LABEL = { topNotes: 'top', heartNotes: 'heart', baseNotes: 'base', accords: 'accord' };
+const TIER_LABEL = { topNotes: 'top', heartNotes: 'heart', baseNotes: 'base', notes: 'note', accords: 'accord' };
 
 /** Every perfume containing a note. matches: [{ perfume, where: ['topNotes', ...] }] */
 export function notePage(note, matches, { isOwner, canEdit, loaded }) {
